@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.4.0
+
+### Добавлено
+
+- Добавлена автоматическая CI-сборка Android-проекта через GitHub Actions.
+- Добавлен запуск unit-тестов в GitHub Actions.
+- Добавлена автоматическая сборка debug APK в GitHub Actions.
+- Добавлена публикация debug APK в GitHub Releases при создании тега `v*`.
+- Добавлена возможность вручную запускать CI workflow через `workflow_dispatch`.
+
+### Улучшено
+
+- APK теперь можно скачать из GitHub Actions для обычных сборок.
+- APK релизных версий теперь можно скачать из GitHub Releases.
+- Добавлена документация по процессу автоматической сборки и релизов.
+
+### Техническое
+
+- Добавлен workflow `.github/workflows/android-ci.yml`.
+- Добавлен workflow `.github/workflows/android-release.yml`.
+- В CI используется Temurin JDK 17.
+- В CI используется Gradle cache через `gradle/actions/setup-gradle`.
+- Для загрузки workflow artifact используется `actions/upload-artifact@v4`.
+- Для публикации APK в GitHub Releases используется `softprops/action-gh-release`.
+
+### Проверено
+
+- Локальная сборка проходит через `assembleDebug`.
+- Unit-тесты проходят через `testDebugUnitTest`.
+- GitHub Actions успешно собирает APK.
+- GitHub Release содержит APK-файл для скачивания.
+
 ## 0.3.0
 
 ### Добавлено
