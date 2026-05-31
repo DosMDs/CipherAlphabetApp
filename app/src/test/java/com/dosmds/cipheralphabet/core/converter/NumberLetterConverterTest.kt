@@ -102,14 +102,58 @@ class NumberLetterConverterTest {
     }
 
     @Test
-    fun numbersToTextKeepsUnknownTokens() {
+    fun numbersToTextReplacesInvalidTokensWithQuestionMark() {
         val result = NumberLetterConverter.numbersToText(
             input = "1 ! abc 27 2",
             alphabet = EnglishAlphabet,
             shift = 0
         )
 
-        assertEquals("A!abc27B", result)
+        assertEquals("A???B", result)
+    }
+
+    @Test
+    fun numbersToTextReplacesOutOfRangeEnglishNumbersWithQuestionMark() {
+        val result = NumberLetterConverter.numbersToText(
+            input = "1 27 3",
+            alphabet = EnglishAlphabet,
+            shift = 0
+        )
+
+        assertEquals("A?C", result)
+    }
+
+    @Test
+    fun numbersToTextReplacesOutOfRangeRussianWithoutYoNumbersWithQuestionMark() {
+        val result = NumberLetterConverter.numbersToText(
+            input = "1 33",
+            alphabet = RussianAlphabetWithoutYo,
+            shift = 0
+        )
+
+        assertEquals("А?", result)
+    }
+
+    @Test
+    fun numbersToTextReplacesOutOfRangeRussianWithYoNumbersWithQuestionMark() {
+        val result = NumberLetterConverter.numbersToText(
+            input = "1 34",
+            alphabet = RussianAlphabetWithYo,
+            shift = 0
+        )
+
+        assertEquals("А?", result)
+    }
+
+    @Test
+    fun numbersToTextReplacesNonNumericTokensWithQuestionMark() {
+        val result = NumberLetterConverter.numbersToText(
+            input = "1 abc 3",
+            alphabet = EnglishAlphabet,
+            shift = 0
+        )
+
+        assertEquals("A?C", result)
     }
 
     @Test
