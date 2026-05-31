@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import com.dosmds.cipheralphabet.core.converter.ConversionAlphabet
 import com.dosmds.cipheralphabet.core.converter.ConversionDirection
 import com.dosmds.cipheralphabet.core.converter.ConversionMode
+import com.dosmds.cipheralphabet.core.converter.opposite
 import com.dosmds.cipheralphabet.core.history.ConversionHistoryItem
 import com.dosmds.cipheralphabet.core.history.InMemoryConversionHistoryStore
 import com.dosmds.cipheralphabet.data.storage.ConverterPreferencesRepository
@@ -94,6 +95,16 @@ class ConverterScreenStateHolder(
         alphabet = item.alphabet
         shiftText = item.shift.toString()
         input = item.inputText
+        saveConverterState()
+    }
+
+    fun swapWithResult(resultText: String) {
+        if (resultText.isBlank()) {
+            return
+        }
+
+        direction = direction.opposite()
+        input = resultText
         saveConverterState()
     }
 

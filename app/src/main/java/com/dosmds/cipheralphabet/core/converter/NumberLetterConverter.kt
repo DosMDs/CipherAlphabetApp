@@ -27,7 +27,7 @@ object NumberLetterConverter {
                         ?.takeIf { it in 1..alphabet.letters.size }
                         ?.let { shiftNumber(it, -shift, alphabet.letters.size) }
                         ?.let { alphabet.letterByNumber(it)?.toString() }
-                        ?: token
+                        ?: "?"
                 }
             }
     }

@@ -39,6 +39,7 @@ import com.dosmds.cipheralphabet.core.converter.ConversionAlphabet
 import com.dosmds.cipheralphabet.core.converter.ConversionDirection
 import com.dosmds.cipheralphabet.core.converter.ConversionMode
 import com.dosmds.cipheralphabet.core.converter.ConversionRouter
+import com.dosmds.cipheralphabet.core.converter.ConversionResult
 import com.dosmds.cipheralphabet.core.converter.ReferenceEntry
 import com.dosmds.cipheralphabet.core.converter.ReferenceTable
 import com.dosmds.cipheralphabet.core.converter.ReferenceTables
@@ -70,14 +71,14 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
     }
 
     val alphabetOptions = ConversionRouter.availableAlphabets(stateHolder.mode)
-    val result = remember(
+    val conversionResult = remember(
         stateHolder.mode,
         stateHolder.direction,
         stateHolder.alphabet,
         stateHolder.shiftText,
         stateHolder.input
     ) {
-        ConversionRouter.convert(
+        ConversionRouter.convertWithResult(
             input = stateHolder.input,
             mode = stateHolder.mode,
             direction = stateHolder.direction,
@@ -85,6 +86,7 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
             shift = stateHolder.shiftText.toIntOrNull() ?: 0
         )
     }
+    val resultText = conversionResult.text
 
     Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
         Column(
@@ -123,14 +125,17 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
                         onShiftTextChange = stateHolder::updateShiftText,
                         input = stateHolder.input,
                         onInputChange = stateHolder::updateInput,
-                        result = result,
+                        result = conversionResult,
                         onCopyResult = {
                             clipboardManager.setPrimaryClip(
-                                ClipData.newPlainText("Результат", result)
+                                ClipData.newPlainText("Результат", resultText)
                             )
                         },
                         onSaveToHistory = {
-                            stateHolder.saveToHistory(resultText = result)
+                            stateHolder.saveToHistory(resultText = resultText)
+                        },
+                        onSwap = {
+                            stateHolder.swapWithResult(resultText = resultText)
                         }
                     )
                 }
@@ -172,10 +177,14 @@ private fun ConverterContent(
     onShiftTextChange: (String) -> Unit,
     input: String,
     onInputChange: (String) -> Unit,
-    result: String,
+    result: ConversionResult,
     onCopyResult: () -> Unit,
-    onSaveToHistory: () -> Unit
+    onSaveToHistory: () -> Unit,
+    onSwap: () -> Unit
 ) {
+    val resultText = result.text
+    val displayedResult = resultText.ifBlank { "Результат появится здесь" }
+
     ChoiceSection(title = "Режим") {
         ConversionMode.entries.forEach { item ->
             FilterChip(
@@ -206,6 +215,12 @@ private fun ConverterContent(
         }
     }
 
+    Text(
+        text = inputHint(mode, direction),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+
     if (mode == ConversionMode.Numbers) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedTextField(
@@ -234,7 +249,7 @@ private fun ConverterContent(
     )
 
     OutlinedTextField(
-        value = result,
+        value = displayedResult,
         onValueChange = {},
         modifier = Modifier
             .fillMaxWidth()
@@ -242,6 +257,14 @@ private fun ConverterContent(
         label = { Text("Результат") },
         readOnly = true
     )
+
+    result.warning?.let { warning ->
+        Text(
+            text = warning,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error
+        )
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -256,16 +279,24 @@ private fun ConverterContent(
         Button(
             onClick = onCopyResult,
             modifier = Modifier.weight(1f),
-            enabled = result.isNotEmpty()
+            enabled = resultText.isNotBlank()
         ) {
             Text("Скопировать")
         }
     }
 
     Button(
+        onClick = onSwap,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = resultText.isNotBlank()
+    ) {
+        Text("Поменять местами")
+    }
+
+    Button(
         onClick = onSaveToHistory,
         modifier = Modifier.fillMaxWidth(),
-        enabled = input.isNotBlank() && result.isNotBlank()
+        enabled = input.isNotBlank() && resultText.isNotBlank()
     ) {
         Text("Сохранить в историю")
     }
@@ -415,6 +446,20 @@ private val MainSection.title: String
         MainSection.Reference -> "Справка"
         MainSection.History -> "История"
     }
+
+private fun inputHint(
+    mode: ConversionMode,
+    direction: ConversionDirection
+): String {
+    return when (mode) {
+        ConversionMode.Numbers -> when (direction) {
+            ConversionDirection.Encode -> "Пример: ABC → 1 2 3"
+            ConversionDirection.Decode -> "Пример: 1 2 3 / 4 5 6 → ABC DEF"
+        }
+        ConversionMode.Morse -> "Буквы разделяются пробелами, слова через /. Пример: ... --- ... → SOS"
+        ConversionMode.Braille -> "Пример: ⠁⠃⠉ → ABC"
+    }
+}
 
 private val ConversionMode.title: String
     get() = when (this) {
