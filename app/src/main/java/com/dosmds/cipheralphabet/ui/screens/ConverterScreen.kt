@@ -19,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -35,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.dosmds.cipheralphabet.BuildConfig
 import com.dosmds.cipheralphabet.core.converter.ConversionAlphabet
 import com.dosmds.cipheralphabet.core.converter.ConversionDirection
 import com.dosmds.cipheralphabet.core.converter.ConversionMode
@@ -50,7 +52,8 @@ import com.dosmds.cipheralphabet.ui.theme.CipherAlphabetAppTheme
 private enum class MainSection {
     Converter,
     Reference,
-    History
+    History,
+    About
 }
 
 @Composable
@@ -157,6 +160,7 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
                         }
                     )
                 }
+                MainSection.About -> AboutContent()
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -183,7 +187,6 @@ private fun ConverterContent(
     onSwap: () -> Unit
 ) {
     val resultText = result.text
-    val displayedResult = resultText.ifBlank { "Результат появится здесь" }
 
     ChoiceSection(title = "Режим") {
         ConversionMode.entries.forEach { item ->
@@ -248,58 +251,97 @@ private fun ConverterContent(
         label = { Text("Ввод") }
     )
 
-    OutlinedTextField(
-        value = displayedResult,
-        onValueChange = {},
+    Button(
+        onClick = { onInputChange("") },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text("Очистить")
+    }
+
+    ResultCard(
+        result = result,
+        hasInput = input.isNotBlank(),
+        onCopyResult = onCopyResult,
+        onSwap = onSwap,
+        onSaveToHistory = onSaveToHistory
+    )
+}
+
+@Composable
+private fun ResultCard(
+    result: ConversionResult,
+    hasInput: Boolean,
+    onCopyResult: () -> Unit,
+    onSwap: () -> Unit,
+    onSaveToHistory: () -> Unit
+) {
+    val resultText = result.text
+    val hasResult = resultText.isNotBlank()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Результат",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = resultText.ifBlank { "Результат появится здесь" },
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (hasResult) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+            result.warning?.let { warning ->
+                WarningBlock(text = warning)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onCopyResult,
+                    modifier = Modifier.weight(1f),
+                    enabled = hasResult
+                ) {
+                    Text("Копировать")
+                }
+                Button(
+                    onClick = onSwap,
+                    modifier = Modifier.weight(1f),
+                    enabled = hasResult
+                ) {
+                    Text("Поменять местами")
+                }
+            }
+            Button(
+                onClick = onSaveToHistory,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = hasInput && hasResult
+            ) {
+                Text("Сохранить в историю")
+            }
+        }
+    }
+}
+
+@Composable
+private fun WarningBlock(text: String) {
+    Text(
+        text = "⚠ $text",
         modifier = Modifier
             .fillMaxWidth()
-            .height(150.dp),
-        label = { Text("Результат") },
-        readOnly = true
+            .padding(vertical = 4.dp),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.error
     )
-
-    result.warning?.let { warning ->
-        Text(
-            text = warning,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error
-        )
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Button(
-            onClick = { onInputChange("") },
-            modifier = Modifier.weight(1f)
-        ) {
-            Text("Очистить")
-        }
-        Button(
-            onClick = onCopyResult,
-            modifier = Modifier.weight(1f),
-            enabled = resultText.isNotBlank()
-        ) {
-            Text("Скопировать")
-        }
-    }
-
-    Button(
-        onClick = onSwap,
-        modifier = Modifier.fillMaxWidth(),
-        enabled = resultText.isNotBlank()
-    ) {
-        Text("Поменять местами")
-    }
-
-    Button(
-        onClick = onSaveToHistory,
-        modifier = Modifier.fillMaxWidth(),
-        enabled = input.isNotBlank() && resultText.isNotBlank()
-    ) {
-        Text("Сохранить в историю")
-    }
 }
 
 @Composable
@@ -399,24 +441,30 @@ private fun HistoryItemCard(
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "${item.mode.title} • ${item.direction.title} • ${item.alphabet.title}",
+                text = historyMetadata(item),
                 style = MaterialTheme.typography.titleMedium
             )
-            if (item.mode == ConversionMode.Numbers) {
-                Text(
-                    text = "Смещение: ${item.shift}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+            HorizontalDivider()
             Text(
-                text = "Ввод: ${item.inputText}",
-                style = MaterialTheme.typography.bodyMedium
+                text = "Ввод",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "Результат: ${item.resultText}",
+                text = item.inputText,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            HorizontalDivider()
+            Text(
+                text = "Результат",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = item.resultText,
                 style = MaterialTheme.typography.bodyMedium
             )
             Row(
@@ -440,12 +488,72 @@ private fun HistoryItemCard(
     }
 }
 
+@Composable
+private fun AboutContent() {
+    Text(
+        text = "О приложении",
+        style = MaterialTheme.typography.titleLarge
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Кодовая Азбука",
+                style = MaterialTheme.typography.titleLarge
+            )
+            Text(
+                text = "Приложение для конвертации текста между числами, азбукой Морзе и символами Брайля.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            HorizontalDivider()
+            Text(
+                text = "Возможности",
+                style = MaterialTheme.typography.titleMedium
+            )
+            listOf(
+                "русский и английский алфавиты",
+                "русский алфавит с Ё и без Ё",
+                "смещение для числового режима",
+                "история операций",
+                "справочные таблицы"
+            ).forEach { feature ->
+                Text(
+                    text = "• $feature",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            HorizontalDivider()
+            Text(
+                text = "Версия: ${BuildConfig.VERSION_NAME}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
 private val MainSection.title: String
     get() = when (this) {
         MainSection.Converter -> "Конвертер"
         MainSection.Reference -> "Справка"
         MainSection.History -> "История"
+        MainSection.About -> "О приложении"
     }
+
+private fun historyMetadata(item: ConversionHistoryItem): String {
+    val base = "${item.mode.title} • ${item.direction.title} • ${item.alphabet.title}"
+    return if (item.mode == ConversionMode.Numbers) {
+        "$base • Смещение: ${item.shift}"
+    } else {
+        base
+    }
+}
 
 private fun inputHint(
     mode: ConversionMode,
