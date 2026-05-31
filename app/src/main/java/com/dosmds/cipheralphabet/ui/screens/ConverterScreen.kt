@@ -23,6 +23,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -186,8 +187,6 @@ private fun ConverterContent(
     onSaveToHistory: () -> Unit,
     onSwap: () -> Unit
 ) {
-    val resultText = result.text
-
     ChoiceSection(title = "Режим") {
         ConversionMode.entries.forEach { item ->
             FilterChip(
@@ -251,16 +250,10 @@ private fun ConverterContent(
         label = { Text("Ввод") }
     )
 
-    Button(
-        onClick = { onInputChange("") },
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text("Очистить")
-    }
-
     ResultCard(
         result = result,
         hasInput = input.isNotBlank(),
+        onClearInput = { onInputChange("") },
         onCopyResult = onCopyResult,
         onSwap = onSwap,
         onSaveToHistory = onSaveToHistory
@@ -271,6 +264,7 @@ private fun ConverterContent(
 private fun ResultCard(
     result: ConversionResult,
     hasInput: Boolean,
+    onClearInput: () -> Unit,
     onCopyResult: () -> Unit,
     onSwap: () -> Unit,
     onSaveToHistory: () -> Unit
@@ -292,7 +286,7 @@ private fun ResultCard(
             )
             Text(
                 text = resultText.ifBlank { "Результат появится здесь" },
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.titleLarge,
                 color = if (hasResult) {
                     MaterialTheme.colorScheme.onSurface
                 } else {
@@ -314,12 +308,19 @@ private fun ResultCard(
                     Text("Копировать")
                 }
                 Button(
-                    onClick = onSwap,
+                    onClick = onClearInput,
                     modifier = Modifier.weight(1f),
-                    enabled = hasResult
+                    enabled = hasInput
                 ) {
-                    Text("Поменять местами")
+                    Text("Очистить")
                 }
+            }
+            Button(
+                onClick = onSwap,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = hasResult
+            ) {
+                Text("Поменять местами")
             }
             Button(
                 onClick = onSaveToHistory,
@@ -334,14 +335,18 @@ private fun ResultCard(
 
 @Composable
 private fun WarningBlock(text: String) {
-    Text(
-        text = "⚠ $text",
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.error
-    )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer
+    ) {
+        Text(
+            text = "⚠ $text",
+            modifier = Modifier.padding(12.dp),
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
 }
 
 @Composable
@@ -413,11 +418,25 @@ private fun HistoryContent(
     }
 
     if (items.isEmpty()) {
-        Text(
-            text = "История пока пуста.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.small
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "История пока пуста",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "Сохранённые операции появятся здесь",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     } else {
         items.forEach { item ->
             HistoryItemCard(
@@ -457,7 +476,11 @@ private fun HistoryItemCard(
                 text = item.inputText,
                 style = MaterialTheme.typography.bodyMedium
             )
-            HorizontalDivider()
+            Text(
+                text = "→",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Text(
                 text = "Результат",
                 style = MaterialTheme.typography.labelMedium,
@@ -547,9 +570,9 @@ private val MainSection.title: String
     }
 
 private fun historyMetadata(item: ConversionHistoryItem): String {
-    val base = "${item.mode.title} • ${item.direction.title} • ${item.alphabet.title}"
+    val base = "${item.mode.title} · ${item.direction.title} · ${item.alphabet.title}"
     return if (item.mode == ConversionMode.Numbers) {
-        "$base • Смещение: ${item.shift}"
+        "$base · смещение ${item.shift}"
     } else {
         base
     }
