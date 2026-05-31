@@ -24,8 +24,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,7 +43,7 @@ import com.dosmds.cipheralphabet.core.converter.ReferenceEntry
 import com.dosmds.cipheralphabet.core.converter.ReferenceTable
 import com.dosmds.cipheralphabet.core.converter.ReferenceTables
 import com.dosmds.cipheralphabet.core.history.ConversionHistoryItem
-import com.dosmds.cipheralphabet.core.history.InMemoryConversionHistoryStore
+import com.dosmds.cipheralphabet.data.storage.ConverterPreferencesRepository
 import com.dosmds.cipheralphabet.ui.theme.CipherAlphabetAppTheme
 
 private enum class MainSection {
@@ -56,35 +55,34 @@ private enum class MainSection {
 @Composable
 fun ConverterScreen(modifier: Modifier = Modifier) {
     var section by rememberSaveable { mutableStateOf(MainSection.Converter) }
-    var mode by rememberSaveable { mutableStateOf(ConversionMode.Numbers) }
-    var direction by rememberSaveable { mutableStateOf(ConversionDirection.Encode) }
-    var alphabet by rememberSaveable { mutableStateOf(ConversionAlphabet.English) }
-    var shiftText by rememberSaveable { mutableStateOf("0") }
-    var input by rememberSaveable { mutableStateOf("") }
-    val historyStore = remember { InMemoryConversionHistoryStore() }
-    var historyItems by remember { mutableStateOf(historyStore.items) }
     val context = LocalContext.current
+    val stateHolder = remember(context) {
+        ConverterScreenStateHolder(
+            repository = ConverterPreferencesRepository(context.applicationContext)
+        )
+    }
     val clipboardManager = remember(context) {
         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     }
 
-    val alphabetOptions by remember(mode) {
-        derivedStateOf { ConversionRouter.availableAlphabets(mode) }
+    DisposableEffect(stateHolder) {
+        onDispose { stateHolder.dispose() }
     }
 
-    LaunchedEffect(mode) {
-        if (alphabet !in alphabetOptions) {
-            alphabet = alphabetOptions.first()
-        }
-    }
-
-    val result = remember(mode, direction, alphabet, shiftText, input) {
+    val alphabetOptions = ConversionRouter.availableAlphabets(stateHolder.mode)
+    val result = remember(
+        stateHolder.mode,
+        stateHolder.direction,
+        stateHolder.alphabet,
+        stateHolder.shiftText,
+        stateHolder.input
+    ) {
         ConversionRouter.convert(
-            input = input,
-            mode = mode,
-            direction = direction,
-            alphabet = alphabet,
-            shift = shiftText.toIntOrNull() ?: 0
+            input = stateHolder.input,
+            mode = stateHolder.mode,
+            direction = stateHolder.direction,
+            alphabet = stateHolder.alphabet,
+            shift = stateHolder.shiftText.toIntOrNull() ?: 0
         )
     }
 
@@ -114,17 +112,17 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
             when (section) {
                 MainSection.Converter -> {
                     ConverterContent(
-                        mode = mode,
-                        onModeChange = { mode = it },
-                        direction = direction,
-                        onDirectionChange = { direction = it },
-                        alphabet = alphabet,
-                        onAlphabetChange = { alphabet = it },
+                        mode = stateHolder.mode,
+                        onModeChange = stateHolder::updateMode,
+                        direction = stateHolder.direction,
+                        onDirectionChange = stateHolder::updateDirection,
+                        alphabet = stateHolder.alphabet,
+                        onAlphabetChange = stateHolder::updateAlphabet,
                         alphabetOptions = alphabetOptions,
-                        shiftText = shiftText,
-                        onShiftTextChange = { shiftText = it },
-                        input = input,
-                        onInputChange = { input = it },
+                        shiftText = stateHolder.shiftText,
+                        onShiftTextChange = stateHolder::updateShiftText,
+                        input = stateHolder.input,
+                        onInputChange = stateHolder::updateInput,
                         result = result,
                         onCopyResult = {
                             clipboardManager.setPrimaryClip(
@@ -132,28 +130,16 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
                             )
                         },
                         onSaveToHistory = {
-                            historyStore.add(
-                                mode = mode,
-                                direction = direction,
-                                alphabet = alphabet,
-                                shift = shiftText.toIntOrNull() ?: 0,
-                                inputText = input,
-                                resultText = result
-                            )
-                            historyItems = historyStore.items
+                            stateHolder.saveToHistory(resultText = result)
                         }
                     )
                 }
                 MainSection.Reference -> ReferenceContent()
                 MainSection.History -> {
                     HistoryContent(
-                        items = historyItems,
+                        items = stateHolder.historyItems,
                         onRepeat = { item ->
-                            mode = item.mode
-                            direction = item.direction
-                            alphabet = item.alphabet
-                            shiftText = item.shift.toString()
-                            input = item.inputText
+                            stateHolder.repeatHistoryItem(item)
                             section = MainSection.Converter
                         },
                         onCopy = { item ->
@@ -162,8 +148,7 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
                             )
                         },
                         onClearHistory = {
-                            historyStore.clear()
-                            historyItems = historyStore.items
+                            stateHolder.clearHistory()
                         }
                     )
                 }
