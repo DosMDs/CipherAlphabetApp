@@ -35,41 +35,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.dosmds.cipheralphabet.core.alphabet.Alphabet
-import com.dosmds.cipheralphabet.core.alphabet.EnglishAlphabet
-import com.dosmds.cipheralphabet.core.alphabet.RussianAlphabetWithYo
-import com.dosmds.cipheralphabet.core.alphabet.RussianAlphabetWithoutYo
-import com.dosmds.cipheralphabet.core.converter.BrailleConverter
-import com.dosmds.cipheralphabet.core.converter.EnglishBrailleTable
-import com.dosmds.cipheralphabet.core.converter.EnglishMorseTable
-import com.dosmds.cipheralphabet.core.converter.MorseConverter
-import com.dosmds.cipheralphabet.core.converter.NumberLetterConverter
-import com.dosmds.cipheralphabet.core.converter.RussianBrailleTable
-import com.dosmds.cipheralphabet.core.converter.RussianMorseTable
+import com.dosmds.cipheralphabet.core.converter.ConversionAlphabet
+import com.dosmds.cipheralphabet.core.converter.ConversionDirection
+import com.dosmds.cipheralphabet.core.converter.ConversionMode
+import com.dosmds.cipheralphabet.core.converter.ConversionRouter
 import com.dosmds.cipheralphabet.ui.theme.CipherAlphabetAppTheme
-
-private enum class ConverterMode(val title: String) {
-    Numbers("Числа"),
-    Morse("Морзе"),
-    Braille("Брайль")
-}
-
-private enum class ConversionDirection(val title: String) {
-    Encode("Кодировать"),
-    Decode("Декодировать")
-}
-
-private enum class AlphabetOption(val title: String) {
-    English("Английский"),
-    RussianWithYo("Русский с Ё"),
-    RussianWithoutYo("Русский без Ё")
-}
 
 @Composable
 fun ConverterScreen(modifier: Modifier = Modifier) {
-    var mode by rememberSaveable { mutableStateOf(ConverterMode.Numbers) }
+    var mode by rememberSaveable { mutableStateOf(ConversionMode.Numbers) }
     var direction by rememberSaveable { mutableStateOf(ConversionDirection.Encode) }
-    var alphabetOption by rememberSaveable { mutableStateOf(AlphabetOption.English) }
+    var alphabet by rememberSaveable { mutableStateOf(ConversionAlphabet.English) }
     var shiftText by rememberSaveable { mutableStateOf("0") }
     var input by rememberSaveable { mutableStateOf("") }
     val context = LocalContext.current
@@ -78,21 +54,21 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
     }
 
     val alphabetOptions by remember(mode) {
-        derivedStateOf { alphabetOptionsFor(mode) }
+        derivedStateOf { ConversionRouter.availableAlphabets(mode) }
     }
 
     LaunchedEffect(mode) {
-        if (alphabetOption !in alphabetOptions) {
-            alphabetOption = alphabetOptions.first()
+        if (alphabet !in alphabetOptions) {
+            alphabet = alphabetOptions.first()
         }
     }
 
-    val result = remember(mode, direction, alphabetOption, shiftText, input) {
-        convertInput(
+    val result = remember(mode, direction, alphabet, shiftText, input) {
+        ConversionRouter.convert(
             input = input,
             mode = mode,
             direction = direction,
-            alphabetOption = alphabetOption,
+            alphabet = alphabet,
             shift = shiftText.toIntOrNull() ?: 0
         )
     }
@@ -111,7 +87,7 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
             )
 
             ChoiceSection(title = "Режим") {
-                ConverterMode.entries.forEach { item ->
+                ConversionMode.entries.forEach { item ->
                     FilterChip(
                         selected = mode == item,
                         onClick = { mode = item },
@@ -133,21 +109,21 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
             ChoiceSection(title = "Алфавит") {
                 alphabetOptions.forEach { item ->
                     FilterChip(
-                        selected = alphabetOption == item,
-                        onClick = { alphabetOption = item },
+                        selected = alphabet == item,
+                        onClick = { alphabet = item },
                         label = { Text(item.title) }
                     )
                 }
             }
 
-            if (mode == ConverterMode.Numbers) {
+            if (mode == ConversionMode.Numbers) {
                 OutlinedTextField(
                     value = shiftText,
                     onValueChange = { shiftText = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Смещение") },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
                 )
             }
 
@@ -201,6 +177,26 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
     }
 }
 
+private val ConversionMode.title: String
+    get() = when (this) {
+        ConversionMode.Numbers -> "Числа"
+        ConversionMode.Morse -> "Морзе"
+        ConversionMode.Braille -> "Брайль"
+    }
+
+private val ConversionDirection.title: String
+    get() = when (this) {
+        ConversionDirection.Encode -> "Кодировать"
+        ConversionDirection.Decode -> "Декодировать"
+    }
+
+private val ConversionAlphabet.title: String
+    get() = when (this) {
+        ConversionAlphabet.English -> "Английский"
+        ConversionAlphabet.RussianWithYo -> "Русский с Ё"
+        ConversionAlphabet.RussianWithoutYo -> "Русский без Ё"
+    }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChoiceSection(
@@ -218,87 +214,6 @@ private fun ChoiceSection(
         ) {
             content()
         }
-    }
-}
-
-private fun alphabetOptionsFor(mode: ConverterMode): List<AlphabetOption> {
-    return when (mode) {
-        ConverterMode.Numbers -> listOf(
-            AlphabetOption.English,
-            AlphabetOption.RussianWithYo,
-            AlphabetOption.RussianWithoutYo
-        )
-        ConverterMode.Morse,
-        ConverterMode.Braille -> listOf(
-            AlphabetOption.English,
-            AlphabetOption.RussianWithYo
-        )
-    }
-}
-
-private fun convertInput(
-    input: String,
-    mode: ConverterMode,
-    direction: ConversionDirection,
-    alphabetOption: AlphabetOption,
-    shift: Int
-): String {
-    return when (mode) {
-        ConverterMode.Numbers -> convertNumbers(input, direction, alphabetOption.alphabet(), shift)
-        ConverterMode.Morse -> convertMorse(input, direction, alphabetOption)
-        ConverterMode.Braille -> convertBraille(input, direction, alphabetOption)
-    }
-}
-
-private fun convertNumbers(
-    input: String,
-    direction: ConversionDirection,
-    alphabet: Alphabet,
-    shift: Int
-): String {
-    return when (direction) {
-        ConversionDirection.Encode -> NumberLetterConverter.textToNumbers(input, alphabet, shift)
-        ConversionDirection.Decode -> NumberLetterConverter.numbersToText(input, alphabet, shift)
-    }
-}
-
-private fun convertMorse(
-    input: String,
-    direction: ConversionDirection,
-    alphabetOption: AlphabetOption
-): String {
-    val table = when (alphabetOption) {
-        AlphabetOption.English -> EnglishMorseTable.table
-        AlphabetOption.RussianWithYo,
-        AlphabetOption.RussianWithoutYo -> RussianMorseTable.table
-    }
-    return when (direction) {
-        ConversionDirection.Encode -> MorseConverter.encode(input, table)
-        ConversionDirection.Decode -> MorseConverter.decode(input, table)
-    }
-}
-
-private fun convertBraille(
-    input: String,
-    direction: ConversionDirection,
-    alphabetOption: AlphabetOption
-): String {
-    val table = when (alphabetOption) {
-        AlphabetOption.English -> EnglishBrailleTable.table
-        AlphabetOption.RussianWithYo,
-        AlphabetOption.RussianWithoutYo -> RussianBrailleTable.table
-    }
-    return when (direction) {
-        ConversionDirection.Encode -> BrailleConverter.encode(input, table)
-        ConversionDirection.Decode -> BrailleConverter.decode(input, table)
-    }
-}
-
-private fun AlphabetOption.alphabet(): Alphabet {
-    return when (this) {
-        AlphabetOption.English -> EnglishAlphabet
-        AlphabetOption.RussianWithYo -> RussianAlphabetWithYo
-        AlphabetOption.RussianWithoutYo -> RussianAlphabetWithoutYo
     }
 }
 
