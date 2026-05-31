@@ -1,0 +1,88 @@
+# Gradle
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Android generated files
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.ap_
+*.aab
+*.aar
+*.dex
+
+# Kotlin
+.kotlin/
+
+# KSP / KAPT
+kspCaches/
+kapt3/
+.generated/
+
+# Android lint
+lint-results*.xml
+lint-results*.html
+
+# Keystore / signing
+*.jks
+*.keystore
+*.p12
+*.pem
+keystore.properties
+signing.properties
+
+# Google services / secrets
+google-services.json
+secrets.properties
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# Test reports / coverage
+coverage/
+test-results/
+reports/
+
+# Generated docs
+docs/generated/
+
+# Local AI / agent scratch files
+.codex/
+.ai/
+tmp/
+temp/
