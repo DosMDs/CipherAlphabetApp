@@ -98,7 +98,7 @@ class NumberLetterConverterTest {
             shift = 0
         )
 
-        assertEquals("1 ! Ж", result)
+        assertEquals("1 ! / Ж", result)
     }
 
     @Test
@@ -144,6 +144,28 @@ class NumberLetterConverterTest {
 
         assertEquals("6 6 7 32", numbers)
         assertEquals("ЕЕЖЯ", text)
+    }
+
+    @Test
+    fun textToNumbersSeparatesWordsWithSlash() {
+        val result = NumberLetterConverter.textToNumbers(
+            text = "HELLO WORLD",
+            alphabet = EnglishAlphabet,
+            shift = 0
+        )
+
+        assertEquals("8 5 12 12 15 / 23 15 18 12 4", result)
+    }
+
+    @Test
+    fun numbersToTextRestoresWordSpacesFromSlash() {
+        val result = NumberLetterConverter.numbersToText(
+            input = "8 5 12 12 15 / 23 15 18 12 4",
+            alphabet = EnglishAlphabet,
+            shift = 0
+        )
+
+        assertEquals("HELLO WORLD", result)
     }
 
     @Test

@@ -117,14 +117,21 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
             }
 
             if (mode == ConversionMode.Numbers) {
-                OutlinedTextField(
-                    value = shiftText,
-                    onValueChange = { shiftText = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Смещение") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedTextField(
+                        value = shiftText,
+                        onValueChange = { shiftText = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Смещение") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+                    )
+                    Text(
+                        text = "При декодировании смещение применяется в обратную сторону.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             OutlinedTextField(
@@ -153,7 +160,6 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
                 Button(
                     onClick = {
                         input = ""
-                        shiftText = "0"
                     },
                     modifier = Modifier.weight(1f)
                 ) {
