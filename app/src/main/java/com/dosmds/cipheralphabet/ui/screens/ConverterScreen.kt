@@ -3,7 +3,9 @@ package com.dosmds.cipheralphabet.ui.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -12,18 +14,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -32,8 +39,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -52,8 +61,8 @@ import com.dosmds.cipheralphabet.ui.theme.CipherAlphabetAppTheme
 
 private enum class MainSection {
     Converter,
-    Reference,
     History,
+    Reference,
     About
 }
 
@@ -96,75 +105,104 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(horizontal = 20.dp, vertical = 16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+                .fillMaxSize()
         ) {
             Text(
                 text = "Шифровальный алфавит",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 style = MaterialTheme.typography.headlineSmall
             )
 
-            ChoiceSection(title = "Раздел") {
-                MainSection.entries.forEach { item ->
-                    FilterChip(
-                        selected = section == item,
-                        onClick = { section = item },
-                        label = { Text(item.title) }
-                    )
-                }
-            }
+            AppSectionTabs(
+                selectedSection = section,
+                onSectionSelected = { section = it }
+            )
 
-            when (section) {
-                MainSection.Converter -> {
-                    ConverterContent(
-                        mode = stateHolder.mode,
-                        onModeChange = stateHolder::updateMode,
-                        direction = stateHolder.direction,
-                        onDirectionChange = stateHolder::updateDirection,
-                        alphabet = stateHolder.alphabet,
-                        onAlphabetChange = stateHolder::updateAlphabet,
-                        alphabetOptions = alphabetOptions,
-                        shiftText = stateHolder.shiftText,
-                        onShiftTextChange = stateHolder::updateShiftText,
-                        input = stateHolder.input,
-                        onInputChange = stateHolder::updateInput,
-                        result = conversionResult,
-                        onCopyResult = {
-                            clipboardManager.setPrimaryClip(
-                                ClipData.newPlainText("Результат", resultText)
-                            )
-                        },
-                        onSaveToHistory = {
-                            stateHolder.saveToHistory(resultText = resultText)
-                        },
-                        onSwap = {
-                            stateHolder.swapWithResult(resultText = resultText)
-                        }
-                    )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                when (section) {
+                    MainSection.Converter -> {
+                        ConverterContent(
+                            mode = stateHolder.mode,
+                            onModeChange = stateHolder::updateMode,
+                            direction = stateHolder.direction,
+                            onDirectionChange = stateHolder::updateDirection,
+                            alphabet = stateHolder.alphabet,
+                            onAlphabetChange = stateHolder::updateAlphabet,
+                            alphabetOptions = alphabetOptions,
+                            shiftText = stateHolder.shiftText,
+                            onShiftTextChange = stateHolder::updateShiftText,
+                            input = stateHolder.input,
+                            onInputChange = stateHolder::updateInput,
+                            result = conversionResult,
+                            onCopyResult = {
+                                clipboardManager.setPrimaryClip(
+                                    ClipData.newPlainText("Результат", resultText)
+                                )
+                            },
+                            onSaveToHistory = {
+                                stateHolder.saveToHistory(resultText = resultText)
+                            },
+                            onSwap = {
+                                stateHolder.swapWithResult(resultText = resultText)
+                            }
+                        )
+                    }
+                    MainSection.Reference -> ReferenceContent()
+                    MainSection.History -> {
+                        HistoryContent(
+                            items = stateHolder.historyItems,
+                            onRepeat = { item ->
+                                stateHolder.repeatHistoryItem(item)
+                                section = MainSection.Converter
+                            },
+                            onCopy = { item ->
+                                clipboardManager.setPrimaryClip(
+                                    ClipData.newPlainText("Результат", item.resultText)
+                                )
+                            },
+                            onClearHistory = {
+                                stateHolder.clearHistory()
+                            }
+                        )
+                    }
+                    MainSection.About -> AboutContent()
                 }
-                MainSection.Reference -> ReferenceContent()
-                MainSection.History -> {
-                    HistoryContent(
-                        items = stateHolder.historyItems,
-                        onRepeat = { item ->
-                            stateHolder.repeatHistoryItem(item)
-                            section = MainSection.Converter
-                        },
-                        onCopy = { item ->
-                            clipboardManager.setPrimaryClip(
-                                ClipData.newPlainText("Результат", item.resultText)
-                            )
-                        },
-                        onClearHistory = {
-                            stateHolder.clearHistory()
-                        }
-                    )
-                }
-                MainSection.About -> AboutContent()
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppSectionTabs(
+    selectedSection: MainSection,
+    onSectionSelected: (MainSection) -> Unit
+) {
+    val sections = MainSection.entries
+
+    PrimaryScrollableTabRow(
+        selectedTabIndex = sections.indexOf(selectedSection),
+        edgePadding = 12.dp
+    ) {
+        sections.forEach { item ->
+            Tab(
+                selected = selectedSection == item,
+                onClick = { onSectionSelected(item) },
+                text = {
+                    Text(
+                        text = item.title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            )
         }
     }
 }
@@ -187,67 +225,21 @@ private fun ConverterContent(
     onSaveToHistory: () -> Unit,
     onSwap: () -> Unit
 ) {
-    ChoiceSection(title = "Режим") {
-        ConversionMode.entries.forEach { item ->
-            FilterChip(
-                selected = mode == item,
-                onClick = { onModeChange(item) },
-                label = { Text(item.title) }
-            )
-        }
-    }
-
-    ChoiceSection(title = "Направление") {
-        ConversionDirection.entries.forEach { item ->
-            FilterChip(
-                selected = direction == item,
-                onClick = { onDirectionChange(item) },
-                label = { Text(item.title) }
-            )
-        }
-    }
-
-    ChoiceSection(title = "Алфавит") {
-        alphabetOptions.forEach { item ->
-            FilterChip(
-                selected = alphabet == item,
-                onClick = { onAlphabetChange(item) },
-                label = { Text(item.title) }
-            )
-        }
-    }
-
-    Text(
-        text = inputHint(mode, direction),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
+    ConverterSettingsCard(
+        mode = mode,
+        onModeChange = onModeChange,
+        direction = direction,
+        onDirectionChange = onDirectionChange,
+        alphabet = alphabet,
+        onAlphabetChange = onAlphabetChange,
+        alphabetOptions = alphabetOptions,
+        shiftText = shiftText,
+        onShiftTextChange = onShiftTextChange
     )
 
-    if (mode == ConversionMode.Numbers) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            OutlinedTextField(
-                value = shiftText,
-                onValueChange = onShiftTextChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Смещение") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
-            )
-            Text(
-                text = "При декодировании смещение применяется в обратную сторону.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-
-    OutlinedTextField(
-        value = input,
-        onValueChange = onInputChange,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(150.dp),
-        label = { Text("Ввод") }
+    InputCard(
+        input = input,
+        onInputChange = onInputChange
     )
 
     ResultCard(
@@ -258,6 +250,162 @@ private fun ConverterContent(
         onSwap = onSwap,
         onSaveToHistory = onSaveToHistory
     )
+}
+
+@Composable
+private fun ConverterSettingsCard(
+    mode: ConversionMode,
+    onModeChange: (ConversionMode) -> Unit,
+    direction: ConversionDirection,
+    onDirectionChange: (ConversionDirection) -> Unit,
+    alphabet: ConversionAlphabet,
+    onAlphabetChange: (ConversionAlphabet) -> Unit,
+    alphabetOptions: List<ConversionAlphabet>,
+    shiftText: String,
+    onShiftTextChange: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Параметры",
+                style = MaterialTheme.typography.titleMedium
+            )
+            OptionSelectorRow(
+                title = "Режим",
+                options = ConversionMode.entries,
+                selectedOption = mode,
+                optionTitle = { it.title },
+                onOptionSelected = onModeChange
+            )
+            OptionSelectorRow(
+                title = "Направление",
+                options = ConversionDirection.entries,
+                selectedOption = direction,
+                optionTitle = { it.title },
+                onOptionSelected = onDirectionChange
+            )
+            OptionSelectorRow(
+                title = "Алфавит",
+                options = alphabetOptions,
+                selectedOption = alphabet,
+                optionTitle = { it.title },
+                onOptionSelected = onAlphabetChange
+            )
+            if (mode == ConversionMode.Numbers) {
+                ShiftRow(
+                    shiftText = shiftText,
+                    onShiftTextChange = onShiftTextChange
+                )
+            }
+            Text(
+                text = inputHint(mode, direction),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun <T> OptionSelectorRow(
+    title: String,
+    options: List<T>,
+    selectedOption: T,
+    optionTitle: (T) -> String,
+    onOptionSelected: (T) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            options.forEach { item ->
+                FilterChip(
+                    selected = selectedOption == item,
+                    onClick = { onOptionSelected(item) },
+                    label = {
+                        Text(
+                            text = optionTitle(item),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShiftRow(
+    shiftText: String,
+    onShiftTextChange: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Смещение",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedTextField(
+                value = shiftText,
+                onValueChange = onShiftTextChange,
+                modifier = Modifier.width(96.dp),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+            )
+        }
+        Text(
+            text = "При декодировании смещение применяется в обратную сторону.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun InputCard(
+    input: String,
+    onInputChange: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Ввод",
+                style = MaterialTheme.typography.titleMedium
+            )
+            OutlinedTextField(
+                value = input,
+                onValueChange = onInputChange,
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                maxLines = 5
+            )
+        }
+    }
 }
 
 @Composable
@@ -277,57 +425,88 @@ private fun ResultCard(
         shape = MaterialTheme.shapes.small
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
                 text = "Результат",
                 style = MaterialTheme.typography.titleMedium
             )
-            Text(
-                text = resultText.ifBlank { "Результат появится здесь" },
-                style = MaterialTheme.typography.titleLarge,
-                color = if (hasResult) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = resultText.ifBlank { "Результат появится здесь" },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (hasResult) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
             result.warning?.let { warning ->
                 WarningBlock(text = warning)
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Button(
-                    onClick = onCopyResult,
-                    modifier = Modifier.weight(1f),
-                    enabled = hasResult
-                ) {
-                    Text("Копировать")
-                }
-                Button(
-                    onClick = onClearInput,
-                    modifier = Modifier.weight(1f),
-                    enabled = hasInput
-                ) {
-                    Text("Очистить")
-                }
-            }
+            ResultActions(
+                hasResult = hasResult,
+                hasInput = hasInput,
+                onCopyResult = onCopyResult,
+                onSwap = onSwap,
+                onSaveToHistory = onSaveToHistory,
+                onClearInput = onClearInput
+            )
+        }
+    }
+}
+
+@Composable
+private fun ResultActions(
+    hasResult: Boolean,
+    hasInput: Boolean,
+    onCopyResult: () -> Unit,
+    onSwap: () -> Unit,
+    onSaveToHistory: () -> Unit,
+    onClearInput: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Button(
-                onClick = onSwap,
-                modifier = Modifier.fillMaxWidth(),
+                onClick = onCopyResult,
+                modifier = Modifier.weight(1f),
                 enabled = hasResult
             ) {
-                Text("Поменять местами")
+                Text("Копировать", maxLines = 1)
             }
-            Button(
+            FilledTonalButton(
+                onClick = onSwap,
+                modifier = Modifier.weight(1f),
+                enabled = hasResult
+            ) {
+                Text("Поменять", maxLines = 1)
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilledTonalButton(
                 onClick = onSaveToHistory,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.weight(1f),
                 enabled = hasInput && hasResult
             ) {
-                Text("Сохранить в историю")
+                Text("Сохранить", maxLines = 1)
+            }
+            FilledTonalButton(
+                onClick = onClearInput,
+                modifier = Modifier.weight(1f),
+                enabled = hasInput
+            ) {
+                Text("Очистить", maxLines = 1)
             }
         }
     }
@@ -342,8 +521,8 @@ private fun WarningBlock(text: String) {
         contentColor = MaterialTheme.colorScheme.onErrorContainer
     ) {
         Text(
-            text = "⚠ $text",
-            modifier = Modifier.padding(12.dp),
+            text = text,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             style = MaterialTheme.typography.bodySmall
         )
     }
@@ -405,16 +584,22 @@ private fun HistoryContent(
     onCopy: (ConversionHistoryItem) -> Unit,
     onClearHistory: () -> Unit
 ) {
-    Text(
-        text = "История операций",
-        style = MaterialTheme.typography.titleLarge
-    )
-
-    Button(
-        onClick = onClearHistory,
-        enabled = items.isNotEmpty()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text("Очистить историю")
+        Text(
+            text = "История операций",
+            style = MaterialTheme.typography.titleLarge
+        )
+        FilledTonalButton(
+            onClick = onClearHistory,
+            enabled = items.isNotEmpty(),
+            contentPadding = ButtonDefaults.TextButtonContentPadding
+        ) {
+            Text("Очистить")
+        }
     }
 
     if (items.isEmpty()) {
@@ -459,55 +644,60 @@ private fun HistoryItemCard(
         shape = MaterialTheme.shapes.small
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 text = historyMetadata(item),
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             HorizontalDivider()
-            Text(
-                text = "Ввод",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            HistoryTextBlock(
+                title = "Ввод",
+                text = item.inputText
             )
-            Text(
-                text = item.inputText,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = "→",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "Результат",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = item.resultText,
-                style = MaterialTheme.typography.bodyMedium
+            HorizontalDivider()
+            HistoryTextBlock(
+                title = "Результат",
+                text = item.resultText
             )
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    onClick = onRepeat,
-                    modifier = Modifier.weight(1f)
+                    onClick = onRepeat
                 ) {
                     Text("Повторить")
                 }
-                Button(
-                    onClick = onCopy,
-                    modifier = Modifier.weight(1f)
+                FilledTonalButton(
+                    onClick = onCopy
                 ) {
                     Text("Копировать")
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HistoryTextBlock(
+    title: String,
+    text: String
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
 
