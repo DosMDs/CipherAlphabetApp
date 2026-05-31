@@ -78,6 +78,29 @@ class InMemoryConversionHistoryStoreTest {
         assertEquals(1, store.items.size)
     }
 
+    @Test
+    fun replaceAllKeepsMaximumTwentyItems() {
+        val store = InMemoryConversionHistoryStore()
+        val items = (1..25).map { index ->
+            ConversionHistoryItem(
+                id = index.toLong(),
+                mode = ConversionMode.Numbers,
+                direction = ConversionDirection.Encode,
+                alphabet = ConversionAlphabet.English,
+                shift = 0,
+                inputText = "Input $index",
+                resultText = "Result $index",
+                createdAt = index.toLong()
+            )
+        }
+
+        store.replaceAll(items)
+
+        assertEquals(20, store.items.size)
+        assertEquals("Input 1", store.items.first().inputText)
+        assertEquals("Input 20", store.items.last().inputText)
+    }
+
     private fun InMemoryConversionHistoryStore.addTestItem(
         inputText: String,
         resultText: String

@@ -14,6 +14,12 @@ class InMemoryConversionHistoryStore(
     val items: List<ConversionHistoryItem>
         get() = history.toList()
 
+    fun replaceAll(items: List<ConversionHistoryItem>) {
+        history.clear()
+        history.addAll(items.take(maxItems))
+        nextId = (history.maxOfOrNull { it.id } ?: 0L) + 1L
+    }
+
     fun add(
         mode: ConversionMode,
         direction: ConversionDirection,
