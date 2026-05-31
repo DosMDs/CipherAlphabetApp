@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.1
+
+### Исправлено
+
+- Исправлены триггеры GitHub Actions.
+- Обычный `push` в ветку `develop` больше не запускает CI-сборку.
+- Release workflow теперь запускается только при публикации тегов `v*` или вручную, если включён `workflow_dispatch`.
+
+### Техническое
+
+- Уточнены события запуска `.github/workflows/android-ci.yml`.
+- Уточнены события запуска `.github/workflows/android-release.yml`.
+- Снижено количество лишних запусков GitHub Actions во время обычной разработки.
+
+### Проверено
+
+- CI workflow доступен для ручного запуска.
+- Release workflow не запускается на обычный push в `develop`.
+- Локальная сборка проходит через `assembleDebug`.
+- Unit-тесты проходят через `testDebugUnitTest`.
+
 ## 0.4.0
 
 ### Добавлено
