@@ -43,11 +43,14 @@ import com.dosmds.cipheralphabet.core.converter.ConversionRouter
 import com.dosmds.cipheralphabet.core.converter.ReferenceEntry
 import com.dosmds.cipheralphabet.core.converter.ReferenceTable
 import com.dosmds.cipheralphabet.core.converter.ReferenceTables
+import com.dosmds.cipheralphabet.core.history.ConversionHistoryItem
+import com.dosmds.cipheralphabet.core.history.InMemoryConversionHistoryStore
 import com.dosmds.cipheralphabet.ui.theme.CipherAlphabetAppTheme
 
 private enum class MainSection {
     Converter,
-    Reference
+    Reference,
+    History
 }
 
 @Composable
@@ -58,6 +61,8 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
     var alphabet by rememberSaveable { mutableStateOf(ConversionAlphabet.English) }
     var shiftText by rememberSaveable { mutableStateOf("0") }
     var input by rememberSaveable { mutableStateOf("") }
+    val historyStore = remember { InMemoryConversionHistoryStore() }
+    var historyItems by remember { mutableStateOf(historyStore.items) }
     val context = LocalContext.current
     val clipboardManager = remember(context) {
         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -125,10 +130,43 @@ fun ConverterScreen(modifier: Modifier = Modifier) {
                             clipboardManager.setPrimaryClip(
                                 ClipData.newPlainText("Результат", result)
                             )
+                        },
+                        onSaveToHistory = {
+                            historyStore.add(
+                                mode = mode,
+                                direction = direction,
+                                alphabet = alphabet,
+                                shift = shiftText.toIntOrNull() ?: 0,
+                                inputText = input,
+                                resultText = result
+                            )
+                            historyItems = historyStore.items
                         }
                     )
                 }
                 MainSection.Reference -> ReferenceContent()
+                MainSection.History -> {
+                    HistoryContent(
+                        items = historyItems,
+                        onRepeat = { item ->
+                            mode = item.mode
+                            direction = item.direction
+                            alphabet = item.alphabet
+                            shiftText = item.shift.toString()
+                            input = item.inputText
+                            section = MainSection.Converter
+                        },
+                        onCopy = { item ->
+                            clipboardManager.setPrimaryClip(
+                                ClipData.newPlainText("Результат", item.resultText)
+                            )
+                        },
+                        onClearHistory = {
+                            historyStore.clear()
+                            historyItems = historyStore.items
+                        }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -150,7 +188,8 @@ private fun ConverterContent(
     input: String,
     onInputChange: (String) -> Unit,
     result: String,
-    onCopyResult: () -> Unit
+    onCopyResult: () -> Unit,
+    onSaveToHistory: () -> Unit
 ) {
     ChoiceSection(title = "Режим") {
         ConversionMode.entries.forEach { item ->
@@ -237,6 +276,14 @@ private fun ConverterContent(
             Text("Скопировать")
         }
     }
+
+    Button(
+        onClick = onSaveToHistory,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = input.isNotBlank() && result.isNotBlank()
+    ) {
+        Text("Сохранить в историю")
+    }
 }
 
 @Composable
@@ -288,10 +335,100 @@ private fun ReferenceEntryText(entry: ReferenceEntry) {
     )
 }
 
+@Composable
+private fun HistoryContent(
+    items: List<ConversionHistoryItem>,
+    onRepeat: (ConversionHistoryItem) -> Unit,
+    onCopy: (ConversionHistoryItem) -> Unit,
+    onClearHistory: () -> Unit
+) {
+    Text(
+        text = "История операций",
+        style = MaterialTheme.typography.titleLarge
+    )
+
+    Button(
+        onClick = onClearHistory,
+        enabled = items.isNotEmpty()
+    ) {
+        Text("Очистить историю")
+    }
+
+    if (items.isEmpty()) {
+        Text(
+            text = "История пока пуста.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    } else {
+        items.forEach { item ->
+            HistoryItemCard(
+                item = item,
+                onRepeat = { onRepeat(item) },
+                onCopy = { onCopy(item) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun HistoryItemCard(
+    item: ConversionHistoryItem,
+    onRepeat: () -> Unit,
+    onCopy: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "${item.mode.title} • ${item.direction.title} • ${item.alphabet.title}",
+                style = MaterialTheme.typography.titleMedium
+            )
+            if (item.mode == ConversionMode.Numbers) {
+                Text(
+                    text = "Смещение: ${item.shift}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            Text(
+                text = "Ввод: ${item.inputText}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "Результат: ${item.resultText}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onRepeat,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Повторить")
+                }
+                Button(
+                    onClick = onCopy,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Копировать")
+                }
+            }
+        }
+    }
+}
+
 private val MainSection.title: String
     get() = when (this) {
         MainSection.Converter -> "Конвертер"
         MainSection.Reference -> "Справка"
+        MainSection.History -> "История"
     }
 
 private val ConversionMode.title: String
