@@ -717,7 +717,7 @@ private fun AboutContent() {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Кодовая Азбука",
+                text = "Phoenix Assistant",
                 style = MaterialTheme.typography.titleLarge
             )
             Text(
