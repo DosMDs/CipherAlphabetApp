@@ -47,6 +47,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.dosmds.cipheralphabet.BuildConfig
+import com.dosmds.cipheralphabet.core.converter.BrailleReferenceProvider
 import com.dosmds.cipheralphabet.core.converter.ConversionAlphabet
 import com.dosmds.cipheralphabet.core.converter.ConversionDirection
 import com.dosmds.cipheralphabet.core.converter.ConversionMode
@@ -57,6 +58,7 @@ import com.dosmds.cipheralphabet.core.converter.ReferenceTable
 import com.dosmds.cipheralphabet.core.converter.ReferenceTables
 import com.dosmds.cipheralphabet.core.history.ConversionHistoryItem
 import com.dosmds.cipheralphabet.data.storage.ConverterPreferencesRepository
+import com.dosmds.cipheralphabet.ui.components.BrailleInputGrid
 import com.dosmds.cipheralphabet.ui.theme.CipherAlphabetAppTheme
 
 private enum class MainSection {
@@ -238,6 +240,9 @@ private fun ConverterContent(
     )
 
     InputCard(
+        mode = mode,
+        direction = direction,
+        alphabet = alphabet,
         input = input,
         onInputChange = onInputChange
     )
@@ -382,6 +387,9 @@ private fun ShiftRow(
 
 @Composable
 private fun InputCard(
+    mode: ConversionMode,
+    direction: ConversionDirection,
+    alphabet: ConversionAlphabet,
     input: String,
     onInputChange: (String) -> Unit
 ) {
@@ -397,13 +405,25 @@ private fun InputCard(
                 text = "Ввод",
                 style = MaterialTheme.typography.titleMedium
             )
-            OutlinedTextField(
-                value = input,
-                onValueChange = onInputChange,
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-                maxLines = 5
-            )
+            if (mode == ConversionMode.Braille) {
+                val entries = remember(alphabet) {
+                    BrailleReferenceProvider.entriesFor(alphabet)
+                }
+                BrailleInputGrid(
+                    entries = entries,
+                    input = input,
+                    direction = direction,
+                    onInputChange = onInputChange
+                )
+            } else {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = onInputChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 5
+                )
+            }
         }
     }
 }
